@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Neon Tic‑Tac‑Toe — Flying Games</title>
+  <style>
+    /* Neon animated background */
+    :root{
+      --bg1:#0f1724; --bg2:#0b1220; --glass: rgba(255,255,255,0.03);
+      --neon1: #00f0ff; --neon2:#ff00d0; --neon3:#7cff00; --accent:#fff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Arial}
+    body{
+      background: radial-gradient(1000px 600px at 10% 10%, rgba(0,240,255,0.06), transparent 10%),
+                  radial-gradient(800px 500px at 90% 90%, rgba(255,0,208,0.06), transparent 10%),
+                  linear-gradient(180deg,var(--bg1),var(--bg2));
+      display:flex;align-items:center;justify-content:center;padding:32px;
+      color:var(--accent);
+    }
+
+    /* animated gradient overlay */
+    .arena::before{
+      content:""; position:fixed; inset:0; z-index:-1; mix-blend-mode:screen; opacity:0.45;
+      background: conic-gradient(from 120deg at 50% 50%, rgba(0,240,255,0.14), rgba(255,0,208,0.14), rgba(124,255,0,0.14), rgba(0,240,255,0.14));
+      animation: spin 18s linear infinite;
+      filter: blur(40px);
+    }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
+
+    .container{width:100%;max-width:920px;border-radius:18px;padding:22px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); box-shadow: 0 10px 40px rgba(2,6,23,0.7), 0 0 40px rgba(0,0,0,0.25); display:grid;grid-template-columns: 380px 1fr; gap:20px}
+
+    .panel{padding:18px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03)}
+
+    h1{margin:0 0 8px;font-size:20px;letter-spacing:0.6px}
+    .sub{font-size:13px;opacity:0.8;margin-bottom:10px}
+
+    /* Score / controls */
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:10px;color:var(--accent);cursor:pointer;font-weight:600}
+    .btn.primary{background:linear-gradient(90deg,var(--neon1),var(--neon2));box-shadow:0 6px 18px rgba(0,240,255,0.08);color:#041018}
+
+    /* Board */
+    .board-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+    .board{width:340px;height:340px;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));border-radius:12px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px;box-shadow:inset 0 6px 20px rgba(0,0,0,0.4)}
+
+    .cell{display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.02);border-radius:8px;font-size:64px;color:var(--neon1);cursor:pointer;transition:transform .12s ease, box-shadow .12s;user-select:none}
+    .cell:hover{transform:translateY(-4px);box-shadow:0 10px 30px rgba(0,0,0,0.45)}
+
+    .cell.x{color:var(--neon2); text-shadow:0 0 8px rgba(255,0,208,0.35)}
+    .cell.o{color:var(--neon1); text-shadow:0 0 8px rgba(0,240,255,0.35)}
+
+    .status{font-size:16px;margin-top:6px;text-align:center}
+
+    /* winning line effect */
+    .win-line{position:absolute;left:0;top:0;pointer-events:none}
+
+    /* right panel */
+    .right{display:flex;flex-direction:column;gap:12px}
+    .info{display:flex;gap:12px;align-items:center}
+    .stat{padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.03));border:1px solid rgba(255,255,255,0.02);min-width:84px;text-align:center}
+
+    /* footer small */
+    .footer{font-size:12px;color:rgba(255,255,255,0.7);opacity:0.9}
+
+    /* responsive */
+    @media(max-width:880px){ .container{grid-template-columns:1fr; max-width:420px} .board{width:300px;height:300px} }
+
+  </style>
+</head>
+<body>
+  <div class="arena">
+    <div class="container">
+      <div class="panel">
+        <h1>Neon Tic‑Tac‑Toe</h1>
+        <div class="sub">Play against a friend or the CPU. Stylish neon visuals and smooth interactions.</div>
+
+        <div class="controls">
+          <button id="resetBtn" class="btn">Restart</button>
+          <button id="cpuBtn" class="btn">Play vs CPU: <span id="cpuMode">Off</span></button>
+          <select id="difficulty" class="btn" style="padding:6px 8px">
+            <option value="easy">Easy (Random)</option>
+            <option value="hard">Hard (Unbeatable)</option>
+          </select>
+          <div style="flex:1"></div>
+          <div class="stat">Turn: <strong id="turnDisplay">X</strong></div>
+        </div>
+
+        <div style="height:14px"></div>
+
+        <div class="board-wrap">
+          <div style="position:relative;display:inline-block">
+            <div id="board" class="board" aria-label="Tic Tac Toe board"></div>
+            <svg id="winSVG" class="win-line" width="360" height="360" style="position:absolute;left:0;top:0"></svg>
+          </div>
+          <div class="status" id="status">X starts — click a cell to play</div>
+        </div>
+      </div>
+
+      <div class="panel right">
+        <div class="info">
+          <div class="stat">X Wins<br><strong id="xWins">0</strong></div>
+          <div class="stat">Draws<br><strong id="draws">0</strong></div>
+          <div class="stat">O Wins<br><strong id="oWins">0</strong></div>
+        </div>
+
+        <div class="panel" style="padding:12px">
+          <h3 style="margin:0 0 6px">How to play</h3>
+          <div style="font-size:13px;opacity:0.9">Click any empty cell to place your mark. Toggle <strong>Play vs CPU</strong> to challenge the computer. Set difficulty to <em>Hard</em> for an unbeatable opponent (minimax).</div>
+        </div>
+
+        <div class="panel" style="padding:12px">
+          <h3 style="margin:0 0 6px">Tips</h3>
+          <ul style="margin:0 0 0 18px;padding:0;font-size:13px">
+            <li>Take center when possible.</li>
+            <li>Block forks and force draws on hard mode if needed.</li>
+            <li>Enjoy the neon glow ✨</li>
+          </ul>
+        </div>
+
+        <div class="footer">Made with ♥ — Flying Games</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// Game logic
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+const turnDisplay = document.getElementById('turnDisplay');
+const resetBtn = document.getElementById('resetBtn');
+const cpuBtn = document.getElementById('cpuBtn');
+const cpuModeSpan = document.getElementById('cpuMode');
+const difficultySel = document.getElementById('difficulty');
+const xWinsEl = document.getElementById('xWins');
+const oWinsEl = document.getElementById('oWins');
+const drawsEl = document.getElementById('draws');
+const winSVG = document.getElementById('winSVG');
+
+let board = Array(9).fill('');
+let current = 'X';
+let playing = true;
+let vsCPU = false;
+let difficulty = 'easy';
+let scores = { X:0, O:0, D:0 };
+
+const wins = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+function renderBoard(){
+  boardEl.innerHTML = '';
+  for(let i=0;i<9;i++){
+    const cell = document.createElement('div');
+    cell.className = 'cell ' + (board[i]==='X'? 'x' : (board[i]==='O'? 'o' : ''));
+    cell.dataset.index = i;
+    cell.innerHTML = board[i];
+    cell.addEventListener('click', onCellClick);
+    boardEl.appendChild(cell);
+  }
+  turnDisplay.textContent = current;
+}
+
+function onCellClick(e){
+  const idx = Number(e.currentTarget.dataset.index);
+  if(!playing || board[idx]) return;
+  makeMove(idx, current);
+}
+
+function makeMove(idx, player){
+  if(board[idx] || !playing) return;
+  board[idx] = player;
+  renderBoard();
+  const result = checkWinner(board);
+  if(result){
+    endGame(result);
+    return;
+  }
+  current = (player === 'X') ? 'O' : 'X';
+  turnDisplay.textContent = current;
+  statusEl.textContent = (vsCPU && current==='O') ? 'CPU thinking...' : `${current} to move`;
+
+  if(vsCPU && current === 'O'){
+    // small delay for feeling
+    setTimeout(()=>{ cpuMove(); }, 350);
+  }
+}
+
+function checkWinner(b){
+  for(const line of wins){
+    const [a,b1,c] = line;
+    if(b[a] && b[a] === b[b1] && b[a] === b[c]){
+      return { winner: b[a], line };
+    }
+  }
+  if(b.every(cell=>cell)) return { winner: 'D' };
+  return null;
+}
+
+function endGame(result){
+  playing = false;
+  if(result.winner === 'D'){
+    statusEl.textContent = 'Draw!';
+    scores.D++;
+    drawsEl.textContent = scores.D;
+  } else {
+    statusEl.textContent = `${result.winner} wins!`;
+    scores[result.winner]++;
+    if(result.winner === 'X') xWinsEl.textContent = scores.X; else oWinsEl.textContent = scores.O;
+    drawWinLine(result.line);
+  }
+}
+
+function drawWinLine(line){
+  // Clear then draw a neon line across the winning cells
+  winSVG.innerHTML = '';
+  const idxToPos = i => {
+    const col = i % 3; const row = Math.floor(i/3);
+    const cellSize = 340/3; // board size 340
+    const pad = 12 + 10/2; // board padding + gap/2
+    const x = pad + col * (cellSize + 10) + cellSize/2;
+    const y = pad + row * (cellSize + 10) + cellSize/2;
+    return {x,y};
+  }
+  const p1 = idxToPos(line[0]);
+  const p2 = idxToPos(line[2]);
+  const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
+  lineEl.setAttribute('x1',p1.x); lineEl.setAttribute('y1',p1.y);
+  lineEl.setAttribute('x2',p2.x); lineEl.setAttribute('y2',p2.y);
+  lineEl.setAttribute('stroke', 'rgba(255,255,255,0.9)');
+  lineEl.setAttribute('stroke-width', 6);
+  lineEl.setAttribute('stroke-linecap', 'round');
+  lineEl.style.filter = 'drop-shadow(0 0 12px rgba(124,255,0,0.6)) drop-shadow(0 0 18px rgba(0,240,255,0.18))';
+  winSVG.appendChild(lineEl);
+}
+
+function cpuMove(){
+  if(!playing) return;
+  if(difficulty === 'easy'){
+    // random empty cell
+    const empties = board.map((v,i)=>v?null:i).filter(v=>v!==null);
+    const choice = empties[Math.floor(Math.random()*empties.length)];
+    makeMove(choice,'O');
+  } else {
+    // hard: minimax
+    const best = minimax(board.slice(), 'O');
+    makeMove(best.index,'O');
+  }
+}
+
+function minimax(bd, player){
+  const avail = bd.map((v,i)=>v?null:i).filter(v=>v!==null);
+  const winnerCheck = checkWinner(bd);
+  if(winnerCheck){
+    if(winnerCheck.winner === 'X') return {score:-10};
+    if(winnerCheck.winner === 'O') return {score:10};
+    if(winnerCheck.winner === 'D') return {score:0};
+  }
+
+  const moves = [];
+  for(const i of avail){
+    const move = {};
+    move.index = i;
+    bd[i] = player;
+    const result = minimax(bd, player === 'O' ? 'X' : 'O');
+    move.score = result.score;
+    bd[i] = '';
+    moves.push(move);
+  }
+
+  // choose best move for current player
+  let bestMove;
+  if(player === 'O'){
+    let bestScore = -Infinity;
+    for(const m of moves) if(m.score > bestScore){ bestScore = m.score; bestMove = m; }
+  } else {
+    let bestScore = Infinity;
+    for(const m of moves) if(m.score < bestScore){ bestScore = m.score; bestMove = m; }
+  }
+  return bestMove || {index: avail[0], score:0};
+}
+
+resetBtn.addEventListener('click', ()=>{ resetGame(); });
+cpuBtn.addEventListener('click', ()=>{ vsCPU = !vsCPU; cpuModeSpan.textContent = vsCPU? 'On':'Off'; statusEl.textContent = vsCPU? 'Play vs CPU enabled' : 'Play vs friend'; if(vsCPU && current==='O') setTimeout(cpuMove,350); });
+difficultySel.addEventListener('change',(e)=>{ difficulty = e.target.value; });
+
+function resetGame(){
+  board = Array(9).fill(''); current = 'X'; playing = true; winSVG.innerHTML=''; renderBoard(); statusEl.textContent = 'X starts — click a cell to play';
+}
+
+// init
+renderBoard();
+
+</script>
+</body>
+</html>
